@@ -19,6 +19,10 @@ static boolean isReceivingUserContact = false;
 static boolean hasUserContact = false;
 static boolean isReceivingRHMessages = false;
 static boolean hasSerialMessage = true;
+static boolean isWaiting = false;
+static boolean isSendingRHMessage = false;
+
+static byte msg_len;
 
 byte Rx = 3, Tx = 4;
 //RH_ASK driver
@@ -60,8 +64,8 @@ void loop(){
         if(SIDCounter >= 3){
           hasUserContact = true;
           isReceivingUserContact = false;
-          isReceivingRHMessages = true;
           hasSerialMessage = false;
+          isWaiting = true;
         }  
       }
     }
@@ -70,22 +74,54 @@ void loop(){
   Serial.print("SID : ");
   Serial.print(SID);
 
-  while(isReceivingRHMessages){
-    digitalWrite(Rx, HIGH);
-    
+  while(isWaiting){   // Receiver Mode
+    digitalWrite(Rx, HIGH); // Turn on Receiver Module
     uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
     uint8_t buflen = sizeof(buf);
 
-    if (driver.recv(buf, &buflen)){ // Non-blocking
-      int i;
-      // Message with a good checksum received, dump it.
-      for(i = 0; i<buflen; i++){
-        Serial.print((char)buf[i]);
+    //if Message from Outside
+    if(driver.available()){
+      isReceivingRHMessages = true;
+      while(isReceivingRHMessages){
+        if (driver.recv(buf, &buflen)){ // Non-blocking
+          //...
+          //Code to verify received message with HK
+          //...
+          int i;
+          // Message with a good checksum received, dump it.
+          for(i = 0; i<buflen; i++){
+            Serial.print((char)buf[i]);
+          }
+        }
       }
+      isReceivingRHMessages = false;
+    }
+
+    // if Message from user Phone serial
+    if(Serial.available() >= 63){
+      int i;    // Read all from the buffer
+      for(i = 0; i < RH_ASK_MAX_MESSAGE_LEN; i++){
+        buf[i] = Serial.read();
+      }
+      
+      isSendingRHMessage = true;
+      digitalWrite(Tx, HIGH); // Turn on Transmitter Module
+      digitalWrite(Rx, LOW); // Turn off Receiver Module
+      
+      while(isSendingRHMessage){
+        driver.send((uint8_t *)buf, buflen);
+        driver.waitPacketSent();
+        isSendingRHMessage = false;
+        delay(200);
+      }
+      
+      delay(100); 
+      digitalWrite(Tx, LOW); // Turn off Transceiver Module
+      digitalWrite(Rx, HIGH); // Turn on Receiver Module
+        
     }
   }
-   
-  delay(500);  
+
 }  
 
 void hashKeyGenerator(){
