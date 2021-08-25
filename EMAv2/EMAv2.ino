@@ -50,7 +50,7 @@ void loop(){
     char serialData;
     byte SIDCounter = 0;
     
-    if(Serial.availableForWrite() >= 63){
+    if(Serial.availableForWrite() >= 60){
       Serial.write(0x01);
       isReceivingUserContact = true;
     }
@@ -82,23 +82,51 @@ void loop(){
     //if Message from Outside
     if(driver.available()){
       isReceivingRHMessages = true;
+      boolean isForMe = false;
       while(isReceivingRHMessages){
-        if (driver.recv(buf, &buflen)){ // Non-blocking
-          //...
-          //Code to verify received message with HK
-          //...
           int i;
-          // Message with a good checksum received, dump it.
-          for(i = 0; i<buflen; i++){
-            Serial.print((char)buf[i]);
+        if (driver.recv(buf, &buflen)){ // Non-blocking
+          for(i = 1; i <= 4; i++){
+            if(buf[i] == '0'){
+              isForMe = true; // Checks if incoming message is for you, else throw
+              continue;
+            }
+            else {
+              isForMe = false;
+              break;
+            }
           }
+
+          if(isForMe == false){
+            for(i = 1; i <= 4; i++){
+              if(buf[i] == SID[i-1]){
+                isForMe = true; // Checks if incoming message is for you, else throw
+                continue;
+              }
+              else {
+                isForMe = false;
+                break;
+              }
+            }
+          }
+
+          if(isForMe){
+            //...
+            //Code to verify received message with HK
+            //...
+            // Message with a good checksum received, dump it.
+            for(i = 0; i<buflen; i++){
+              Serial.print((char)buf[i]);
+            }
+          }else 
+            isReceivingRHMessages = false;
         }
       }
       isReceivingRHMessages = false;
     }
 
     // if Message from user Phone serial
-    if(Serial.available() >= 63){
+    if(Serial.available() >= 60){
       int i;    // Read all from the buffer
       for(i = 0; i < RH_ASK_MAX_MESSAGE_LEN; i++){
         buf[i] = Serial.read();
