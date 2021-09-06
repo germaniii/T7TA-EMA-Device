@@ -71,8 +71,8 @@ void loop(){
     }
   }
 
-  Serial.print("SID : ");
-  Serial.print(SID);
+  //Serial.print("SID : "); Removed because it causes notif to crash
+  //Serial.print(SID);
 
   while(isWaiting){   // Receiver Mode
     digitalWrite(Rx, HIGH); // Turn on Receiver Module
