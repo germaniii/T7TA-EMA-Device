@@ -85,6 +85,8 @@ void loop(){
       boolean isForMe = false;
       while(isReceivingRHMessages){
           int i;
+
+        // This part checks if it is a beacon mode signal.
         if (driver.recv(buf, &buflen)){ // Non-blocking
           for(i = 1; i <= 4; i++){
             if(buf[i] == '0'){
@@ -96,34 +98,35 @@ void loop(){
               break;
             }
           }
-
-          if(isForMe == false){
-            for(i = 1; i <= 4; i++){
-              if(buf[i] == SID[i-1]){
-                isForMe = true; // Checks if incoming message is for you, else throw
-                continue;
-              }
-              else {
-                isForMe = false;
-                break;
-              }
+          
+        // This part checks if it is a text message mode packet.
+        if(isForMe == false){
+          for(i = 1; i <= 4; i++){
+            if((char)buf[i] == SID[i-1]){
+              isForMe = true; // Checks if incoming message is for you, else throw
+              continue;
+            }
+            else {
+              isForMe = false;
+              break;
             }
           }
-
-          if(isForMe){
-            //...
-            //Code to verify received message with HK
-            //...
-            // Message with a good checksum received, dump it.
-            for(i = 0; i<buflen; i++){
-              Serial.print((char)buf[i]);
-            }
-          }else 
-            isReceivingRHMessages = false;
         }
+
+        if(isForMe){
+          //...
+          //Code to verify received message with HK
+          //...
+          // Message with a good checksum received, dump it.
+          for(i = 0; i<buflen; i++){
+            Serial.print((char)buf[i]);
+          }
+        }else 
+          isReceivingRHMessages = false;
       }
-      isReceivingRHMessages = false;
     }
+      isReceivingRHMessages = false;
+  }
 
     // if Message from user Phone serial
     if(Serial.available() >= 60){
