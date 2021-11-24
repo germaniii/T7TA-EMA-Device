@@ -7,8 +7,6 @@
 static byte SMP = 0;
 static char SID[4];
 static char RID[4];
-static char ED[44];
-static char HK[10];
 
 //Checking Variables
 static char RID_check[4];
@@ -43,6 +41,8 @@ void setup(){
 }  
  
 void loop(){
+  
+  uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
 
   while(!hasUserContact){
     digitalWrite(Rx, LOW);
@@ -76,16 +76,12 @@ void loop(){
 
   while(isWaiting){   // Receiver Mode
     digitalWrite(Rx, HIGH); // Turn on Receiver Module
-    uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
-    uint8_t buflen = sizeof(buf);
+    uint8_t buflen = 60;
 
-    //if Message from Outside
+    //if message from guest/outside
     if(driver.available()){
-      isReceivingRHMessages = true;
       boolean isForMe = false;
-      while(isReceivingRHMessages){
           int i;
-
         // This part checks if it is a beacon mode signal.
         if (driver.recv(buf, &buflen)){ // Non-blocking
           for(i = 1; i <= 4; i++){
@@ -114,47 +110,31 @@ void loop(){
         }
 
         if(isForMe){
-          //...
-          //Code to verify received message with HK
-          //...
-          // Message with a good checksum received, dump it.
           for(i = 0; i<buflen; i++){
             Serial.print((char)buf[i]);
           }
-        }else 
-          isReceivingRHMessages = false;
+        }
       }
-    }
-      isReceivingRHMessages = false;
   }
-
-    // if Message from user Phone serial
+\
+    // if Message from host/user's phone
     if(Serial.available() >= 60){
       int i;    // Read all from the buffer
       for(i = 0; i < RH_ASK_MAX_MESSAGE_LEN; i++){
         buf[i] = Serial.read();
       }
       
-      isSendingRHMessage = true;
       digitalWrite(Tx, HIGH); // Turn on Transmitter Module
       digitalWrite(Rx, LOW); // Turn off Receiver Module
       
-      while(isSendingRHMessage){
-        driver.send((uint8_t *)buf, buflen);
-        driver.waitPacketSent();
-        isSendingRHMessage = false;
-        delay(200);
-      }
+      driver.send((uint8_t *)buf, buflen);
+      driver.waitPacketSent();
       
       delay(100); 
-      digitalWrite(Tx, LOW); // Turn off Transceiver Module
+      digitalWrite(Tx, LOW); // Turn off Transmitter Module
       digitalWrite(Rx, HIGH); // Turn on Receiver Module
         
     }
   }
 
 }  
-
-void hashKeyGenerator(){
-  //insert hash key algorithm here    
-}
