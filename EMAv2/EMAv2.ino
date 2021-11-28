@@ -5,7 +5,7 @@
 
 //Packet Variables
 static byte SMP = 0;
-static char SID[4];
+static byte SID[4];
 static char RID[4];
 
 //Checking Variables
@@ -53,6 +53,8 @@ void loop(){
     if(Serial.availableForWrite() >= 60){
       Serial.write(0x01);
       isReceivingUserContact = true;
+    }else{
+      Serial.flush();
     }
     while(isReceivingUserContact){
       while(SIDCounter <= 3){
@@ -81,6 +83,7 @@ void loop(){
     //if message from guest/outside
     if(driver.available()){
       boolean isForMe = false;
+      boolean isComplete = false;
           int i;
         // This part checks if it is a beacon mode signal.
         if (driver.recv(buf, &buflen)){ // Non-blocking
@@ -94,29 +97,41 @@ void loop(){
               break;
             }
           }
-          
-        // This part checks if it is a text message mode packet.
-        if(isForMe == false){
-          for(i = 1; i <= 4; i++){
-            if((char)buf[i] == SID[i-1]){
-              isForMe = true; // Checks if incoming message is for you, else throw
-              continue;
-            }
-            else {
-              isForMe = false;
-              break;
-            }
-          }
-        }
 
-        if(isForMe){
+          // check if incoming data = 60
           for(i = 0; i<buflen; i++){
-            Serial.print((char)buf[i]);
+            if(buf[i] > 0x00)
+              isComplete = true;
+            else
+              isComplete = false;
           }
-        }
+
+          if(isComplete){
+            // This part checks if it is a text message mode packet.
+            if(isForMe == false){
+              for(i = 1; i <= 4; i++){
+                if((byte)buf[i] == SID[i-1]){
+                  isForMe = true; // Checks if incoming message is for you, else throw
+                  continue;
+                }
+                else {
+                  isForMe = false;
+                  break;
+                }
+              }
+            }
+    
+            if(isForMe){
+              for(i = 0; i<buflen; i++){
+                Serial.print((char)buf[i]);
+              }
+            }
+          }
+
+         isComplete = false;
       }
   }
-\
+  
     // if Message from host/user's phone
     if(Serial.available() >= 60){
       int i;    // Read all from the buffer
@@ -134,6 +149,8 @@ void loop(){
       digitalWrite(Tx, LOW); // Turn off Transmitter Module
       digitalWrite(Rx, HIGH); // Turn on Receiver Module
         
+    }else{
+      Serial.flush();
     }
   }
 
